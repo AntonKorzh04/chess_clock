@@ -53,7 +53,10 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void EXTI3_Callback(void);
+void EXTI9_5_Callback(void);
+void TIM2_PeriodElapsedCallback(void);
+void TIM3_PeriodElapsedCallback(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

@@ -45,6 +45,7 @@
 RTC_HandleTypeDef hrtc;
 
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 Button button0 = Button(BUTTON0_GPIO_Port, BUTTON0_RED_Pin, BUTTON0_GREEN_Pin,
@@ -58,9 +59,9 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_RTC_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -99,8 +100,9 @@ int main(void)
   MX_GPIO_Init();
   MX_RTC_Init();
   MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-
+  button1.SetLedColor(GREEN);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,6 +112,27 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	if (button0.isShortPressed) {
+		HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
+		button0.isShortPressed = false;
+	}
+
+	if (button0.isPressed) {
+		button0.SetLedMode(NORMAL);
+	} else {
+		button0.SetLedMode(OFF);
+	}
+
+	if (button1.isShortPressed) {
+		HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
+		button1.isShortPressed = false;
+	}
+
+	if (button1.isPressed) {
+		button1.SetLedMode(NORMAL);
+	} else {
+		button1.SetLedMode(OFF);
+	}
   }
   /* USER CODE END 3 */
 }
@@ -147,7 +170,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV8;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV8;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
@@ -265,6 +288,51 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 7999;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 999;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -334,33 +402,89 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	switch (GPIO_Pin) {
-		case BUTTON0_Pin:
-			if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_SET) {
-				button0.SetLedColor(GREEN);
-				button0.SetLedMode(BLINKING);
-				button1.SetLedColor(GREEN);
-				button1.SetLedMode(BLINKING);
-			}
-			break;
-		case BUTTON1_Pin:
-			if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_SET) {
-				button0.SetLedColor(RED);
-				button0.SetLedMode(NORMAL);
-				button1.SetLedColor(RED);
-				button1.SetLedMode(NORMAL);
-			}
-			break;
-		default: break;
+// button0
+void EXTI3_Callback() {
+	__disable_irq();
+	// кнопка нажата и таймер не запущен - запускаем таймер
+	if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_RESET
+			&& !(TIM3->CR1 & TIM_CR1_CEN)) {
+		TIM3->CNT = 0x0;
+		HAL_TIM_Base_Start_IT(&htim3);
 	}
+	// кнопка отжата ...
+	if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_SET) {
+		/* ... и таймер не переполнился - короткое нажатие
+		 * ставим флаг isShortPressed и останавливаем таймер
+		 */
+		if (!button0.isPressed && (TIM3->CR1 & TIM_CR1_CEN)) {
+			HAL_TIM_Base_Stop_IT(&htim3);
+			TIM3->CNT = 0x0;
+			button0.isShortPressed = true;
+		}
+		/* ... и таймер переполнился и выключился - долгое нажатие
+		 * флаг isPressed уже выставлен в TIM3_PeriodElapsedCallback
+		 * здесь его убираем (кнопку уже отпустили)
+		 */
+		else {
+			button0.isPressed = false;
+			TIM3->CNT = 0x0;
+		}
+	}
+	__enable_irq();
+}
+
+// button1
+void EXTI9_5_Callback() {
+	 __disable_irq();
+	// кнопка нажата и таймер не запущен - запускаем таймер
+	if (HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_RESET
+			&& !(TIM3->CR1 & TIM_CR1_CEN)) {
+		TIM3->CNT = 0x0;
+		HAL_TIM_Base_Start_IT(&htim3);
+	}
+	// кнопка отжата ...
+	if (HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_SET) {
+		/* ... и таймер не переполнился - короткое нажатие
+		 * ставим флаг isShortPressed и останавливаем таймер
+		 */
+		if (!button1.isPressed && (TIM3->CR1 & TIM_CR1_CEN)) {
+			HAL_TIM_Base_Stop_IT(&htim3);
+			TIM3->CNT = 0x0;
+			button1.isShortPressed = true;
+		}
+		/* ... и таймер переполнился и выключился - долгое нажатие
+		 * флаг isPressed уже выставлен в TIM3_PeriodElapsedCallback
+		 * здесь его убираем (кнопку уже отпустили)
+		 */
+		else {
+			button1.isPressed = false;
+			TIM3->CNT = 0x0;
+		}
+	}
+	 __enable_irq();
 }
 
 // TIM2 отвечает за синхронное мигание всех элементов
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+void TIM2_PeriodElapsedCallback() {
 	HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
 	button0.ToggleLed();
 	button1.ToggleLed();
+}
+
+// TIM3 отвечает за короткое/длинное нажатие кнопок
+void TIM3_PeriodElapsedCallback() {
+	__disable_irq();
+	/* таймер успел переполниться (значит кнопка не отжата) - ставим флаг isPressed
+	 * и останавливаем таймер
+	 */
+	HAL_TIM_Base_Stop_IT(&htim3);
+	if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_RESET) {
+		button0.isPressed = true;
+	} else if (HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_RESET) {
+		button1.isPressed = true;
+	}
+	TIM3->CNT = 0x0;
+	__enable_irq();
 }
 /* USER CODE END 4 */
 

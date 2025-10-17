@@ -40,6 +40,8 @@ public:
 				htim(htim) {
 		this->SetLedColor(RED);
 		this->SetLedMode(OFF);
+		this->isShortPressed = false;
+		this->isPressed = false;
 	};
 
 	/* isShortPressed - устанавливается после отпускания кнопки при кототком нажатии
