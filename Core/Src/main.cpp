@@ -17,9 +17,12 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <main.hpp>
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 #include <button.hpp>
 #include <delay_micros.hpp>
-#include <main.hpp>
 #include <tm1637.hpp>
 /* USER CODE END Includes */
 
@@ -41,16 +44,23 @@
 /* Private variables ---------------------------------------------------------*/
 RTC_HandleTypeDef hrtc;
 
-/* USER CODE BEGIN PV */
+TIM_HandleTypeDef htim2;
 
+/* USER CODE BEGIN PV */
+Button button0 = Button(BUTTON0_GPIO_Port, BUTTON0_RED_Pin, BUTTON0_GREEN_Pin,
+		BUTTON0_BLUE_Pin, BUTTON0_Pin, &htim2);
+Button button1 = Button(BUTTON1_GPIO_Port, BUTTON1_RED_Pin, BUTTON1_GREEN_Pin,
+		BUTTON1_BLUE_Pin, BUTTON1_Pin, &htim2);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_RTC_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -88,15 +98,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_RTC_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-  DWT_Init();        // инициализация DWT
-  set_brightness(7); // 0 - 7 яркость
-  clearDisplay();    // очистка дисплея
-
-  RTC_TimeTypeDef sTime = {0}; // структура для времени
-
-  int8_t TimeDisp[4] = {0,};
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,17 +110,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-
-	point(0); // двоеточие, 0 - мигает, 1 - горит постоянно, удалить функцию - нет двоеточия
-
-	TimeDisp[0] = sTime.Minutes / 10;
-	TimeDisp[1] = sTime.Minutes % 10;
-	TimeDisp[2] = sTime.Seconds / 10;
-	TimeDisp[3] = sTime.Seconds % 10;
-	display_mass(TimeDisp);
-
-	HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
@@ -153,7 +146,7 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV8;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
@@ -227,6 +220,51 @@ static void MX_RTC_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 7999;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 499;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -245,7 +283,8 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, BUTTON0_RED_Pin|BUTTON0_GREEN_Pin|BUTTON0_BLUE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, BUTTON0_RED_Pin|BUTTON0_GREEN_Pin|BUTTON0_BLUE_Pin|BUTTON1_RED_Pin
+                          |BUTTON1_GREEN_Pin|BUTTON1_BLUE_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin, GPIO_PIN_SET);
@@ -253,18 +292,20 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, DISP0_DIO_Pin|DISP0_CLK_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : BUTTON0_RED_Pin BUTTON0_GREEN_Pin BUTTON0_BLUE_Pin */
-  GPIO_InitStruct.Pin = BUTTON0_RED_Pin|BUTTON0_GREEN_Pin|BUTTON0_BLUE_Pin;
+  /*Configure GPIO pins : BUTTON0_RED_Pin BUTTON0_GREEN_Pin BUTTON0_BLUE_Pin BUTTON1_RED_Pin
+                           BUTTON1_GREEN_Pin BUTTON1_BLUE_Pin */
+  GPIO_InitStruct.Pin = BUTTON0_RED_Pin|BUTTON0_GREEN_Pin|BUTTON0_BLUE_Pin|BUTTON1_RED_Pin
+                          |BUTTON1_GREEN_Pin|BUTTON1_BLUE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : BUTTON0_Pin */
-  GPIO_InitStruct.Pin = BUTTON0_Pin;
+  /*Configure GPIO pins : BUTTON0_Pin BUTTON1_Pin */
+  GPIO_InitStruct.Pin = BUTTON0_Pin|BUTTON1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(BUTTON0_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BOARD_LED_Pin */
   GPIO_InitStruct.Pin = BOARD_LED_Pin;
@@ -281,8 +322,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -290,16 +334,34 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if (GPIO_Pin == BUTTON0_Pin) {
-		// button0 pull up => в момент после отпускания высокий уровень
-		if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_SET) {
-//		  cycleButtonLedState(&button0_state);
-		}
+	switch (GPIO_Pin) {
+		case BUTTON0_Pin:
+			if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_SET) {
+				button0.SetLedColor(GREEN);
+				button0.SetLedMode(BLINKING);
+				button1.SetLedColor(GREEN);
+				button1.SetLedMode(BLINKING);
+			}
+			break;
+		case BUTTON1_Pin:
+			if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_SET) {
+				button0.SetLedColor(RED);
+				button0.SetLedMode(NORMAL);
+				button1.SetLedColor(RED);
+				button1.SetLedMode(NORMAL);
+			}
+			break;
+		default: break;
 	}
 }
 
+// TIM2 отвечает за синхронное мигание всех элементов
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
+	button0.ToggleLed();
+	button1.ToggleLed();
+}
 /* USER CODE END 4 */
 
 /**

@@ -63,9 +63,18 @@ void Error_Handler(void);
 #define BUTTON0_GREEN_GPIO_Port GPIOA
 #define BUTTON0_BLUE_Pin GPIO_PIN_2
 #define BUTTON0_BLUE_GPIO_Port GPIOA
-#define BUTTON0_Pin GPIO_PIN_0
-#define BUTTON0_GPIO_Port GPIOB
-#define BUTTON0_EXTI_IRQn EXTI0_IRQn
+#define BUTTON0_Pin GPIO_PIN_3
+#define BUTTON0_GPIO_Port GPIOA
+#define BUTTON0_EXTI_IRQn EXTI3_IRQn
+#define BUTTON1_RED_Pin GPIO_PIN_4
+#define BUTTON1_RED_GPIO_Port GPIOA
+#define BUTTON1_GREEN_Pin GPIO_PIN_5
+#define BUTTON1_GREEN_GPIO_Port GPIOA
+#define BUTTON1_BLUE_Pin GPIO_PIN_6
+#define BUTTON1_BLUE_GPIO_Port GPIOA
+#define BUTTON1_Pin GPIO_PIN_7
+#define BUTTON1_GPIO_Port GPIOA
+#define BUTTON1_EXTI_IRQn EXTI9_5_IRQn
 #define BOARD_LED_Pin GPIO_PIN_2
 #define BOARD_LED_GPIO_Port GPIOB
 #define DISP0_DIO_Pin GPIO_PIN_8
@@ -74,9 +83,7 @@ void Error_Handler(void);
 #define DISP0_CLK_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-#define LED_ON 0U
-#define LED_OFF 1U
-#define BUTTON0_LED_GPIO_Port GPIOA
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

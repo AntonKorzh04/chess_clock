@@ -8,7 +8,7 @@
 #ifndef DELAY_MICROS_H_
 #define DELAY_MICROS_H_
 
-#include <main.hpp>
+#include "stm32f1xx_hal.h"
 
 void DWT_Init(void);
 void delay_micros(uint32_t us);
