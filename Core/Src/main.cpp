@@ -117,7 +117,8 @@ int main(void)
 		button0.isShortPressed = false;
 	}
 
-	if (button0.isPressed) {
+	if (button0.isPressed && !button1.isPressed) {
+		button0.SetLedColor(RED);
 		button0.SetLedMode(NORMAL);
 	} else {
 		button0.SetLedMode(OFF);
@@ -128,9 +129,20 @@ int main(void)
 		button1.isShortPressed = false;
 	}
 
-	if (button1.isPressed) {
+	if (button1.isPressed && !button0.isPressed) {
+		button1.SetLedColor(GREEN);
 		button1.SetLedMode(NORMAL);
 	} else {
+		button1.SetLedMode(OFF);
+	}
+
+	if (button0.isPressed && button1.isPressed) {
+		button0.SetLedColor(BLUE);
+		button1.SetLedColor(BLUE);
+		button0.SetLedMode(NORMAL);
+		button1.SetLedMode(NORMAL);
+	} else {
+		button0.SetLedMode(OFF);
 		button1.SetLedMode(OFF);
 	}
   }
@@ -480,7 +492,8 @@ void TIM3_PeriodElapsedCallback() {
 	HAL_TIM_Base_Stop_IT(&htim3);
 	if (HAL_GPIO_ReadPin(BUTTON0_GPIO_Port, BUTTON0_Pin) == GPIO_PIN_RESET) {
 		button0.isPressed = true;
-	} else if (HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_RESET) {
+	}
+	if (HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_RESET) {
 		button1.isPressed = true;
 	}
 	TIM3->CNT = 0x0;
