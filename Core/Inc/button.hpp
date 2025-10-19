@@ -30,16 +30,13 @@ public:
 			uint16_t GPIO_Pin_Red,
 			uint16_t GPIO_Pin_Green,
 			uint16_t GPIO_Pin_Blue,
-			uint16_t GPIO_Pin,
-			TIM_HandleTypeDef *htim):
+			uint16_t GPIO_Pin):
 				port(GPIOx),
 				pin_red(GPIO_Pin_Red),
 				pin_green(GPIO_Pin_Green),
 				pin_blue(GPIO_Pin_Blue),
-				pin(GPIO_Pin),
-				htim(htim) {
-		this->SetLedColor(RED);
-		this->SetLedMode(OFF);
+				pin(GPIO_Pin) {
+		this->SetLed(RED, OFF);
 		this->isShortPressed = false;
 		this->isPressed = false;
 	};
@@ -50,15 +47,13 @@ public:
 		автоматически при отпускании кнопки */
 	bool isShortPressed, isPressed;
 
-	// Установка цвета (только поле класса)
-	void SetLedColor(ButtonLedColor color) { this->color = color; };
-
-	// Установка режима подсветки (непосредственно включение)
-	void SetLedMode(ButtonLedMode mode);
+	// Установка цвета и режима работы светодиода
+	void SetLed(ButtonLedColor _color, ButtonLedMode _mode);
 
 	// Переключение состояний (обычное вкл\выкл или для режима мигания)
 	void ToggleLed();
 
+	bool isBlinking() { return mode == BLINKING; }
 private:
 	// Порт, считаем, что одинаковый для всех пинов
 	GPIO_TypeDef *port;
@@ -83,9 +78,6 @@ private:
 
 	// Управление GPIO при выключении подсветки
 	void SetLedOffGPIO();
-
-	// Указатель на таймер, по прерываниям которого работает мигание
-	TIM_HandleTypeDef *htim;
 };
 
 #endif /* BUTTON_HPP_ */

@@ -7,30 +7,28 @@
 
 #include <button.hpp>
 
-void Button::SetLedMode(ButtonLedMode mode) {
-	if (this->mode == mode) { return; }
-	switch (mode) {
+void Button::SetLed(ButtonLedColor _color, ButtonLedMode _mode) {
+	if (this->color == _color && this->mode == _mode) return;
+	this->color = _color;
+	this->mode = _mode;
+	switch (_mode) {
 		case NORMAL:
 			this->SetLedOnGPIO();
-			if (this->mode == BLINKING) { HAL_TIM_Base_Stop_IT(this->htim); }
 			break;
 		case BLINKING:
 			this->SetLedOnGPIO();
 			this->isOn = true;
-			HAL_TIM_Base_Start_IT(this->htim);
 			break;
 		case OFF:
 			this->SetLedOffGPIO();
-			if (this->mode == BLINKING) { HAL_TIM_Base_Stop_IT(this->htim); }
 		default: break;
 	}
-	this->mode = mode;
 }
 
 void Button::ToggleLed() {
 	switch (this->mode) {
 		case NORMAL:
-			this->SetLedMode(OFF);
+			this->SetLed(this->color, OFF);
 			break;
 		case BLINKING:
 			if (this->isOn) {
@@ -41,7 +39,7 @@ void Button::ToggleLed() {
 			this->isOn = !this->isOn;
 			break;
 		case OFF:
-			this->SetLedMode(NORMAL);
+			this->SetLed(this->color, NORMAL);
 			break;
 	}
 }

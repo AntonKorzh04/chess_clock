@@ -49,9 +49,10 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 Button button0 = Button(BUTTON0_GPIO_Port, BUTTON0_RED_Pin, BUTTON0_GREEN_Pin,
-		BUTTON0_BLUE_Pin, BUTTON0_Pin, &htim2);
+		BUTTON0_BLUE_Pin, BUTTON0_Pin);
 Button button1 = Button(BUTTON1_GPIO_Port, BUTTON1_RED_Pin, BUTTON1_GREEN_Pin,
-		BUTTON1_BLUE_Pin, BUTTON1_Pin, &htim2);
+		BUTTON1_BLUE_Pin, BUTTON1_Pin);
+TM1637 disp0 = TM1637(DISP0_CLK_GPIO_Port, DISP0_DIO_Pin, DISP0_CLK_Pin);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -102,7 +103,9 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-  button1.SetLedColor(GREEN);
+  HAL_TIM_Base_Start_IT(&htim2);
+
+  disp0.Reset();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -117,33 +120,23 @@ int main(void)
 		button0.isShortPressed = false;
 	}
 
-	if (button0.isPressed && !button1.isPressed) {
-		button0.SetLedColor(RED);
-		button0.SetLedMode(NORMAL);
-	} else {
-		button0.SetLedMode(OFF);
-	}
-
 	if (button1.isShortPressed) {
 		HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
 		button1.isShortPressed = false;
 	}
 
-	if (button1.isPressed && !button0.isPressed) {
-		button1.SetLedColor(GREEN);
-		button1.SetLedMode(NORMAL);
+	if (button0.isPressed && !button1.isPressed) {
+		button0.SetLed(RED, NORMAL);
+		button1.SetLed(GREEN, OFF);
+	} else if (button1.isPressed && !button0.isPressed) {
+		button0.SetLed(RED, OFF);
+		button1.SetLed(GREEN, NORMAL);
+	} else if (button0.isPressed && button1.isPressed) {
+		button0.SetLed(BLUE, BLINKING);
+		button1.SetLed(BLUE, BLINKING);
 	} else {
-		button1.SetLedMode(OFF);
-	}
-
-	if (button0.isPressed && button1.isPressed) {
-		button0.SetLedColor(BLUE);
-		button1.SetLedColor(BLUE);
-		button0.SetLedMode(NORMAL);
-		button1.SetLedMode(NORMAL);
-	} else {
-		button0.SetLedMode(OFF);
-		button1.SetLedMode(OFF);
+		button0.SetLed(BLUE, OFF);
+		button1.SetLed(BLUE, OFF);
 	}
   }
   /* USER CODE END 3 */
@@ -447,7 +440,7 @@ void EXTI3_Callback() {
 
 // button1
 void EXTI9_5_Callback() {
-	 __disable_irq();
+	__disable_irq();
 	// кнопка нажата и таймер не запущен - запускаем таймер
 	if (HAL_GPIO_ReadPin(BUTTON1_GPIO_Port, BUTTON1_Pin) == GPIO_PIN_RESET
 			&& !(TIM3->CR1 & TIM_CR1_CEN)) {
@@ -473,14 +466,16 @@ void EXTI9_5_Callback() {
 			TIM3->CNT = 0x0;
 		}
 	}
-	 __enable_irq();
+	__enable_irq();
 }
 
 // TIM2 отвечает за синхронное мигание всех элементов
 void TIM2_PeriodElapsedCallback() {
+	__disable_irq();
 	HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
-	button0.ToggleLed();
-	button1.ToggleLed();
+	if (button0.isBlinking()) button0.ToggleLed();
+	if (button1.isBlinking()) button1.ToggleLed();
+	__enable_irq();
 }
 
 // TIM3 отвечает за короткое/длинное нажатие кнопок

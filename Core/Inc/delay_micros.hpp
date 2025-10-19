@@ -10,7 +10,7 @@
 
 #include "stm32f1xx_hal.h"
 
-void DWT_Init(void);
-void delay_micros(uint32_t us);
+void DWTInit(void);
+void DelayUs(uint32_t us);
 
 #endif /* DELAY_MICROS_H_ */
