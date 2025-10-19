@@ -106,6 +106,10 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim2);
 
   disp0.Reset();
+  disp0.Display(0x0, 1);
+  disp0.Display(0x1, 2);
+  disp0.Display(0x2, 3);
+  disp0.Display(0x3, 4);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -118,25 +122,35 @@ int main(void)
 	if (button0.isShortPressed) {
 		HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
 		button0.isShortPressed = false;
+		disp0.SetBlinkMode(NO_BLINK);
+//		disp0.Display(0x2, 1);
 	}
 
 	if (button1.isShortPressed) {
 		HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
 		button1.isShortPressed = false;
+		disp0.SetBlinkMode(NO_BLINK);
+//		disp0.Display(0x0, 1);
 	}
 
 	if (button0.isPressed && !button1.isPressed) {
 		button0.SetLed(RED, NORMAL);
 		button1.SetLed(GREEN, OFF);
+		disp0.SetBlinkMode(BLINK_LOW);
+//		disp0.Display(0x2, 0);
 	} else if (button1.isPressed && !button0.isPressed) {
 		button0.SetLed(RED, OFF);
 		button1.SetLed(GREEN, NORMAL);
+		disp0.SetBlinkMode(BLINK_HIGH);
+//		disp0.Display(0x0, 0);
 	} else if (button0.isPressed && button1.isPressed) {
 		button0.SetLed(BLUE, BLINKING);
 		button1.SetLed(BLUE, BLINKING);
+		disp0.SetBlinkMode(BLINK);
 	} else {
 		button0.SetLed(BLUE, OFF);
 		button1.SetLed(BLUE, OFF);
+		disp0.SetBlinkMode(NO_BLINK);
 	}
   }
   /* USER CODE END 3 */
@@ -472,9 +486,9 @@ void EXTI9_5_Callback() {
 // TIM2 отвечает за синхронное мигание всех элементов
 void TIM2_PeriodElapsedCallback() {
 	__disable_irq();
-	HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
-	if (button0.isBlinking()) button0.ToggleLed();
-	if (button1.isBlinking()) button1.ToggleLed();
+	if (button0.isBlinking) button0.ToggleLed();
+	if (button1.isBlinking) button1.ToggleLed();
+	if (disp0.isBlinking) disp0.Toggle();
 	__enable_irq();
 }
 

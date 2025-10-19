@@ -36,24 +36,22 @@ public:
 				pin_green(GPIO_Pin_Green),
 				pin_blue(GPIO_Pin_Blue),
 				pin(GPIO_Pin) {
-		this->SetLed(RED, OFF);
-		this->isShortPressed = false;
-		this->isPressed = false;
+		SetLed(RED, OFF);
+		isShortPressed = false;
+		isPressed = false;
 	};
 
 	/* isShortPressed - устанавливается после отпускания кнопки при кототком нажатии
 		 снимается вручную в управляющем автомате
 	isPressed - устанавливается после сброса таймера долгого нажатия, снимается
 		автоматически при отпускании кнопки */
-	bool isShortPressed, isPressed;
+	bool isShortPressed, isPressed, isBlinking;
 
 	// Установка цвета и режима работы светодиода
 	void SetLed(ButtonLedColor _color, ButtonLedMode _mode);
 
 	// Переключение состояний (обычное вкл\выкл или для режима мигания)
 	void ToggleLed();
-
-	bool isBlinking() { return mode == BLINKING; }
 private:
 	// Порт, считаем, что одинаковый для всех пинов
 	GPIO_TypeDef *port;

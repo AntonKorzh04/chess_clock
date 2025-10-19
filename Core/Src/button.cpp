@@ -8,60 +8,60 @@
 #include <button.hpp>
 
 void Button::SetLed(ButtonLedColor _color, ButtonLedMode _mode) {
-	if (this->color == _color && this->mode == _mode) return;
-	this->color = _color;
-	this->mode = _mode;
+	if (color == _color && mode == _mode) return;
+	color = _color;
+	mode = _mode;
+	isBlinking = mode == BLINKING;
 	switch (_mode) {
 		case NORMAL:
-			this->SetLedOnGPIO();
+			SetLedOnGPIO();
 			break;
 		case BLINKING:
-			this->SetLedOnGPIO();
-			this->isOn = true;
+			SetLedOnGPIO();
+			isOn = true;
 			break;
 		case OFF:
-			this->SetLedOffGPIO();
+			SetLedOffGPIO();
+			break;
 		default: break;
 	}
 }
 
 void Button::ToggleLed() {
-	switch (this->mode) {
+	switch (mode) {
 		case NORMAL:
-			this->SetLed(this->color, OFF);
+			SetLed(color, OFF);
 			break;
 		case BLINKING:
-			if (this->isOn) {
-				this->SetLedOffGPIO();
-			} else {
-				this->SetLedOnGPIO();
-			}
-			this->isOn = !this->isOn;
+			if (isOn) SetLedOffGPIO();
+				else SetLedOnGPIO();
+			isOn = !isOn;
 			break;
 		case OFF:
-			this->SetLed(this->color, NORMAL);
+			SetLed(color, NORMAL);
 			break;
+		default: break;
 	}
 }
 
 void Button::SetLedOnGPIO() {
-	switch (this->color) {
+	switch (color) {
 		case RED:
-			HAL_GPIO_WritePin(this->port, this->pin_green|this->pin_blue, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(this->port, this->pin_red, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(port, pin_green|pin_blue, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(port, pin_red, GPIO_PIN_RESET);
 			break;
 		case GREEN:
-			HAL_GPIO_WritePin(this->port, this->pin_red|this->pin_blue, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(this->port, this->pin_green, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(port, pin_red|pin_blue, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(port, pin_green, GPIO_PIN_RESET);
 			break;
 		case BLUE:
-			HAL_GPIO_WritePin(this->port, this->pin_red|this->pin_green, GPIO_PIN_SET);
-			HAL_GPIO_WritePin(this->port, this->pin_blue, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(port, pin_red|pin_green, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(port, pin_blue, GPIO_PIN_RESET);
 			break;
 		default: break;
 	}
 }
 
 void Button::SetLedOffGPIO() {
-	HAL_GPIO_WritePin(this->port, this->pin_red|this->pin_green|this->pin_blue, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(port, pin_red|pin_green|pin_blue, GPIO_PIN_SET);
 }

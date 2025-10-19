@@ -14,11 +14,15 @@ int8_t TM1637::TubeTab[] = {0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x
 
 /* Public --------------------------------------------------------------------*/
 
-void TM1637::Display4Digits(int8_t *DispData) {
+void TM1637::Display4Digits(int8_t *DispData, bool save) {
 	int8_t SegData[4];
-	for(uint8_t i = 0; i < 4; i++) {
-		SegData[i] = DispData[i];
-		CurrentDispData[i] = DispData[i];
+	if (save) {
+		for(uint8_t i = 0; i < 4; i++) {
+			SegData[i] = DispData[i];
+			CurrentDispData[i] = DispData[i];
+		}
+	} else {
+		for(uint8_t i = 0; i < 4; i++) SegData[i] = DispData[i];
 	}
 
 	IntTo7Seg4Digits(SegData);
@@ -36,10 +40,10 @@ void TM1637::Display4Digits(int8_t *DispData) {
 	Stop();
 }
 
-void TM1637::Display(uint8_t BitAddr, int8_t DispData) {
+void TM1637::Display(uint8_t BitAddr, int8_t DispData, bool save) {
 	int8_t SegData;
 	SegData = IntTo7Seg(DispData);
-	CurrentDispData[BitAddr] = DispData;
+	if (save) CurrentDispData[BitAddr] = DispData;
 
 	Start();
 	WriteByte(ADDR_FIXED);
@@ -56,10 +60,10 @@ void TM1637::Display(uint8_t BitAddr, int8_t DispData) {
 }
 
 void TM1637::Clear() {
-	Display(0x00, 0x7f);
-	Display(0x01, 0x7f);
-	Display(0x02, 0x7f);
-	Display(0x03, 0x7f);
+	Display(0x00, 0x7f, false);
+	Display(0x01, 0x7f, false);
+	Display(0x02, 0x7f, false);
+	Display(0x03, 0x7f, false);
 }
 
 void TM1637::Reset() {
@@ -76,6 +80,54 @@ void TM1637::SetBrightness(uint8_t brightness) {
 void TM1637::Point(uint8_t cmd) {
 	if(cmd == 0) point_flag = (~point_flag) & 0x01;
 	else point_flag = 1;
+}
+
+void TM1637::SetBlinkMode(DispBlinkMode _mode) {
+	if (mode == _mode) return;
+	mode = _mode;
+	if (mode != NO_BLINK) {
+		isBlinking = true;
+		isOn = true;
+	}
+	else {
+		isBlinking = false;
+		Display4Digits(CurrentDispData, false);
+	}
+}
+
+void TM1637::Toggle() {
+	switch (mode) {
+		case BLINK_LOW:
+			if (isOn) {
+				Display(0x02, 0x7f, false);
+				Display(0x03, 0x7f, false);
+			} else {
+				Display(0x02, CurrentDispData[2], false);
+				Display(0x03, CurrentDispData[3], false);
+			}
+			isOn = !isOn;
+			break;
+		case BLINK_HIGH:
+			if (isOn) {
+				Display(0x00, 0x7f, false);
+				Display(0x01, 0x7f, false);
+			} else {
+				Display(0x00, CurrentDispData[0], false);
+				Display(0x01, CurrentDispData[1], false);
+			}
+			isOn = !isOn;
+			break;
+		case BLINK:
+			if (isOn) {
+				Clear();
+			} else {
+				Display4Digits(CurrentDispData, false);
+			}
+			isOn = !isOn;
+			break;
+		case NO_BLINK: break;
+		default: break;
+	}
 }
 
 /* Private -------------------------------------------------------------------*/
@@ -100,7 +152,7 @@ void TM1637::Stop() {
 	DIO_HIGH();
 }
 
-void TM1637::IntTo7Seg4Digits(int8_t DispData[]) {
+void TM1637::IntTo7Seg4Digits(int8_t *DispData) {
 	uint8_t PointData;
 	if(point_flag == 1) PointData = 0x80;
 		else PointData = 0;

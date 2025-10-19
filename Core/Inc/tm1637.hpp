@@ -15,6 +15,13 @@
 
 #define STARTADDR  0xc0
 
+typedef enum {
+	BLINK_LOW,
+	BLINK_HIGH,
+	BLINK,
+	NO_BLINK
+} DispBlinkMode;
+
 class TM1637 {
 public:
 	TM1637(GPIO_TypeDef *GPIOx,
@@ -27,16 +34,17 @@ public:
 		Cmd_DispCtrl = 0;
 		point_flag = 0;
 		SetBrightness(7);
+		SetBlinkMode(NO_BLINK);
 		Clear();
 	};
 
 	/* Управление дисплеем  --------------------------------------------------*/
 
 	// Отображения массива цифр
-	void Display4Digits(int8_t *DispData);
+	void Display4Digits(int8_t *DispData, bool save = true);
 
 	// Отображение символа по адресу
-	void Display(uint8_t BitAddr, int8_t DispData);
+	void Display(uint8_t BitAddr, int8_t DispData, bool save = true);
 
 	// Очистка дисплея
 	void Clear();
@@ -52,8 +60,10 @@ public:
 	 удалить функцию - нет двоеточия */
 	void Point(uint8_t cmd);
 
-	void BlinkLow();
-	void BlinkHigh();
+	// Выбор режима (обычный, мигание по 2 разряда, мигание всего дисплея)
+	bool isBlinking;
+	void SetBlinkMode(DispBlinkMode _mode);
+	void Toggle();
 
 private:
 	// Порт, считаем, что одинаковый для всех пинов
@@ -92,6 +102,12 @@ private:
 
 	// Отправить 8 бит данных на дисплей
 	void WriteByte(int8_t wr_data);// write 8bit data to tm1637
+
+	// Текущий режим мигания
+	DispBlinkMode mode;
+
+	// Флаг для работы режима мигания
+	bool isOn;
 };
 
 #endif /* TM1637_H_ */
