@@ -5,10 +5,10 @@
  *      Author: anton
  */
 
-#include "stm32f1xx_hal.h"
-
 #ifndef BUTTON_HPP_
 #define BUTTON_HPP_
+
+#include "stm32f1xx_hal.h"
 
 // Цвета подсветки кнопки
 typedef enum {

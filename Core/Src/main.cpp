@@ -22,7 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <button.hpp>
-#include <delay_micros.hpp>
+#include <timer.hpp>
 #include <tm1637.hpp>
 /* USER CODE END Includes */
 
@@ -46,6 +46,7 @@ RTC_HandleTypeDef hrtc;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
 Button button0 = Button(BUTTON0_GPIO_Port, BUTTON0_RED_Pin, BUTTON0_GREEN_Pin,
@@ -53,6 +54,9 @@ Button button0 = Button(BUTTON0_GPIO_Port, BUTTON0_RED_Pin, BUTTON0_GREEN_Pin,
 Button button1 = Button(BUTTON1_GPIO_Port, BUTTON1_RED_Pin, BUTTON1_GREEN_Pin,
 		BUTTON1_BLUE_Pin, BUTTON1_Pin);
 TM1637 disp0 = TM1637(DISP0_CLK_GPIO_Port, DISP0_DIO_Pin, DISP0_CLK_Pin);
+
+RTC_AlarmTypeDef myAlarm = {0};
+RTC_TimeTypeDef myTime = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,8 +65,9 @@ static void MX_GPIO_Init(void);
 static void MX_RTC_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
-
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -102,14 +107,11 @@ int main(void)
   MX_RTC_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim2);
 
   disp0.Reset();
-  disp0.Display(0x0, 1);
-  disp0.Display(0x1, 2);
-  disp0.Display(0x2, 3);
-  disp0.Display(0x3, 4);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -122,35 +124,31 @@ int main(void)
 	if (button0.isShortPressed) {
 		HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
 		button0.isShortPressed = false;
-		disp0.SetBlinkMode(NO_BLINK);
-//		disp0.Display(0x2, 1);
+//		disp0.SetBlinkMode(NO_BLINK);
 	}
 
 	if (button1.isShortPressed) {
 		HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
 		button1.isShortPressed = false;
-		disp0.SetBlinkMode(NO_BLINK);
-//		disp0.Display(0x0, 1);
+//		disp0.SetBlinkMode(NO_BLINK);
 	}
 
 	if (button0.isPressed && !button1.isPressed) {
 		button0.SetLed(RED, NORMAL);
 		button1.SetLed(GREEN, OFF);
-		disp0.SetBlinkMode(BLINK_LOW);
-//		disp0.Display(0x2, 0);
+//		disp0.SetBlinkMode(BLINK_LOW);
 	} else if (button1.isPressed && !button0.isPressed) {
 		button0.SetLed(RED, OFF);
 		button1.SetLed(GREEN, NORMAL);
-		disp0.SetBlinkMode(BLINK_HIGH);
-//		disp0.Display(0x0, 0);
+//		disp0.SetBlinkMode(BLINK_HIGH);
 	} else if (button0.isPressed && button1.isPressed) {
 		button0.SetLed(BLUE, BLINKING);
 		button1.SetLed(BLUE, BLINKING);
-		disp0.SetBlinkMode(BLINK);
+//		disp0.SetBlinkMode(BLINK);
 	} else {
 		button0.SetLed(BLUE, OFF);
 		button1.SetLed(BLUE, OFF);
-		disp0.SetBlinkMode(NO_BLINK);
+//		disp0.SetBlinkMode(NO_BLINK);
 	}
   }
   /* USER CODE END 3 */
@@ -217,6 +215,7 @@ static void MX_RTC_Init(void)
 
   RTC_TimeTypeDef sTime = {0};
   RTC_DateTypeDef DateToUpdate = {0};
+  RTC_AlarmTypeDef sAlarm = {0};
 
   /* USER CODE BEGIN RTC_Init 1 */
 
@@ -252,6 +251,17 @@ static void MX_RTC_Init(void)
   DateToUpdate.Year = 0;
 
   if (HAL_RTC_SetDate(&hrtc, &DateToUpdate, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Enable the Alarm A
+  */
+  sAlarm.AlarmTime.Hours = 0;
+  sAlarm.AlarmTime.Minutes = 0;
+  sAlarm.AlarmTime.Seconds = 1;
+  sAlarm.Alarm = RTC_ALARM_A;
+  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
   {
     Error_Handler();
   }
@@ -352,6 +362,51 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 199;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 39999;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -409,10 +464,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
@@ -507,6 +562,34 @@ void TIM3_PeriodElapsedCallback() {
 	}
 	TIM3->CNT = 0x0;
 	__enable_irq();
+}
+
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc) {
+	HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
+
+	HAL_RTC_GetAlarm(hrtc, &myAlarm, RTC_ALARM_A, RTC_FORMAT_BIN);
+	HAL_RTC_GetTime(hrtc, &myTime, RTC_FORMAT_BIN);
+
+	disp0.Point(0);
+	disp0.Display(0x0, myTime.Minutes / 10);
+	disp0.Display(0x1, myTime.Minutes % 10);
+	disp0.Display(0x2, myTime.Seconds / 10);
+	disp0.Display(0x3, myTime.Seconds % 10);
+
+	myTime.Seconds++;
+	if (!IS_RTC_SECONDS(myTime.Seconds)) {
+		myTime.Seconds = 0U;
+		myTime.Minutes++;
+	}
+	if (!IS_RTC_MINUTES(myTime.Minutes)) {
+		myTime.Minutes = 0U;
+		myTime.Hours++;
+	}
+
+	myAlarm.AlarmTime.Hours = myTime.Hours;
+	myAlarm.AlarmTime.Minutes = myTime.Minutes;
+	myAlarm.AlarmTime.Seconds = myTime.Seconds;
+	HAL_RTC_SetAlarm_IT(hrtc, &myAlarm, RTC_FORMAT_BIN);
 }
 /* USER CODE END 4 */
 

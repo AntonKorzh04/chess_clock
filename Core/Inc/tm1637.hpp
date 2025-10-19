@@ -9,6 +9,7 @@
 #define TM1637_H_
 
 #include "stm32f1xx_hal.h"
+#include <delay_micros.hpp>
 
 #define ADDR_AUTO  0x40
 #define ADDR_FIXED 0x44
