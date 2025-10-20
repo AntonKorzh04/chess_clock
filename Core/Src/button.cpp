@@ -7,6 +7,8 @@
 
 #include <button.hpp>
 
+/* Public --------------------------------------------------------------------*/
+
 void Button::SetLed(ButtonLedColor _color, ButtonLedMode _mode) {
 	if (color == _color && mode == _mode) return;
 	color = _color;
@@ -43,6 +45,8 @@ void Button::ToggleLed() {
 		default: break;
 	}
 }
+
+/* Private -------------------------------------------------------------------*/
 
 void Button::SetLedOnGPIO() {
 	switch (color) {
