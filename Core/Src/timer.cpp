@@ -7,21 +7,27 @@
 
 #include <timer.hpp>
 
+RTC_TimeTypeDef Timer::globalTime = {0, 0, 0};
+
 /* Public --------------------------------------------------------------------*/
 
 void Timer::AddHour(bool withDelay) {
-	time.Hours++;
+	globalTime.Hours++;
 	if (withDelay) HAL_Delay(100);
 }
 
 void Timer::AddMinute(bool withDelay) {
-	time.Minutes++;
+	globalTime.Minutes++;
 	if (withDelay) HAL_Delay(100);
 }
 
 void Timer::AddSecond(bool withDelay) {
-	time.Seconds++;
+	globalTime.Seconds++;
 	if (withDelay) HAL_Delay(100);
+}
+
+void Timer::ResetGlobal() {
+	Timer::globalTime = {0, 0, 0};
 }
 
 void Timer::Add5Sec() {
@@ -39,10 +45,15 @@ void Timer::Reset() {
 	isUp = false;
 
 	time.Hours = 0U;
-	time.Minutes = 1U;
+	time.Minutes = 0U;
 	time.Seconds = 0U;
 
 	changeToMMSS = 0U;
+}
+
+void Timer::SetTimeFromGlobal() {
+	time = globalTime;
+	DispTime();
 }
 
 void Timer::Tick() {
@@ -59,18 +70,20 @@ void Timer::Tick() {
 			}
 		}
 	}
-
-	if (time.Hours == 0) DispTime(false);
-	else if (changeToMMSS) {
-		DispTime(false);
-		changeToMMSS--;
-	} else DispTime(true);
+	DispTime();
 }
 
 /* Private -------------------------------------------------------------------*/
 
-void Timer::DispTime(bool withHours) {
+void Timer::DispTime() {
 	disp->Point(0);
+
+	bool withHours = true;
+	if (time.Hours == 0) withHours = false;
+	else if (changeToMMSS) {
+		withHours = false;
+		changeToMMSS--;
+	}
 
 	if (withHours) {
 		disp->Display(0x0, time.Hours / 10);

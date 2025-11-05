@@ -23,9 +23,10 @@ public:
 	 * Задержка для плавного быстрого добавления при долгом нажатии кнопки
 	 * (чтобы не слишком быстро)
 	 */
-	void AddHour(bool withDelay = false);
-	void AddMinute(bool withDelay = false);
-	void AddSecond(bool withDelay = false);
+	static void AddHour(bool withDelay = false);
+	static void AddMinute(bool withDelay = false);
+	static void AddSecond(bool withDelay = false);
+	static void ResetGlobal();
 
 	/* Для добавления времени другому игроку во время игры
 	 * Отдельные функции для лучшей читаемости
@@ -39,6 +40,9 @@ public:
 	void Start() { isOn = true; }
 	void Stop() { isOn = false; }
 	void Reset();
+
+	// Копирование глобального значения времени (старт игры)
+	void SetTimeFromGlobal();
 
 	/* Декремент на 1с, вызывается в прерывании RTC
 	 * здесь же отображаем время на дисплей
@@ -58,10 +62,13 @@ public:
 	 * withHours = 1 => HH:MM
 	 * withHours = 0 => MM:SS
 	 */
-	void DispTime(bool withHours);
+	void DispTime();
+
+	// Глобальное стартовое значение времени
+	static RTC_TimeTypeDef globalTime;
 
 private:
-	// Структура для хранения времени
+	// Структура для хранения времени каждого таймера
 	RTC_TimeTypeDef time;
 
 	/* Счетчик тиков, в течение которых нужно отображать формат MM:SS

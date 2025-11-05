@@ -53,8 +53,14 @@ Button button0 = Button(BUTTON0_GPIO_Port, BUTTON0_RED_Pin, BUTTON0_GREEN_Pin,
 Button button1 = Button(BUTTON1_GPIO_Port, BUTTON1_RED_Pin, BUTTON1_GREEN_Pin,
 		BUTTON1_BLUE_Pin, BUTTON1_Pin);
 
+// disp0 и button0 - слева, disp1 и button1 - справа
 TM1637 disp0 = TM1637(DISP0_CLK_GPIO_Port, DISP0_DIO_Pin, DISP0_CLK_Pin);
+TM1637 disp1 = TM1637(DISP1_CLK_GPIO_Port, DISP1_DIO_Pin, DISP1_CLK_Pin);
+
 Timer tim0 = Timer(&disp0);
+Timer tim1 = Timer(&disp1);
+
+fsmState state;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,6 +71,9 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc);
+void DisplayGlobalTime(TM1637 *, TM1637 *, RTC_TimeTypeDef);
+void ShortPressDelay();
+void GameEndAnimation();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -105,8 +114,19 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  // TIM2 отвечает за синхронное мигание всех элементов, работает всегда
   HAL_TIM_Base_Start_IT(&htim2);
+
+  // Включаем ежесекундное прерывание RTC для работы таймеров
   HAL_RTCEx_SetSecond_IT(&hrtc);
+
+  // Начальные выходные сигналы
+  button0.SetLed(GREEN, BLINKING);
+  button1.SetLed(BLUE, NORMAL);
+  disp0.SetBlinkMode(BLINK_LOW);
+
+  // Начальное состояние автомата при включении устройства
+  state = fsmState::SETUP_HOUR;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -116,31 +136,179 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	if (button0.isShortPressed) {
-		button0.isShortPressed = false;
-		tim0.Start();
+	switch (state) {
+		case SETUP_HOUR:
+			if (button0.isShortPressed) {
+				button0.ClearShortPressed();
+				Timer::AddHour();
+				DisplayGlobalTime(&disp0, &disp1, Timer::globalTime);
+			} else if (button1.isShortPressed) {
+				button1.ClearShortPressed();
+				disp0.SetBlinkMode(NO_BLINK);
+				disp1.SetBlinkMode(BLINK_HIGH);
+				state = SETUP_MIN;
+			} else if (button0.isPressed) {
+				Timer::AddHour(true);
+				DisplayGlobalTime(&disp0, &disp1, Timer::globalTime);
+			}
+			break;
+		case SETUP_MIN:
+			if (button0.isShortPressed) {
+				button0.ClearShortPressed();
+				Timer::AddMinute();
+				DisplayGlobalTime(&disp0, &disp1, Timer::globalTime);
+			} else if (button1.isShortPressed) {
+				button1.ClearShortPressed();
+				disp1.SetBlinkMode(BLINK_LOW);
+				state = SETUP_SEC;
+			} else if (button0.isPressed) {
+				Timer::AddMinute(true);
+				DisplayGlobalTime(&disp0, &disp1, Timer::globalTime);
+			}
+			break;
+		case SETUP_SEC:
+			if (button0.isShortPressed) {
+				button0.ClearShortPressed();
+				Timer::AddSecond();
+				DisplayGlobalTime(&disp0, &disp1, Timer::globalTime);
+			} else if (button1.isShortPressed) {
+				button1.ClearShortPressed();
+				disp0.SetBlinkMode(BLINK_LOW);
+				disp1.SetBlinkMode(NO_BLINK);
+				state = SETUP_HOUR;
+			} else if (button0.isPressed) {
+				Timer::AddSecond(true);
+				DisplayGlobalTime(&disp0, &disp1, Timer::globalTime);
+			} else if (button1.isPressed) {
+				disp0.SetBlinkMode(BLINK);
+				disp1.SetBlinkMode(BLINK);
+				button0.SetLed(GREEN, BLINKING);
+				button1.SetLed(GREEN, BLINKING);
+				tim0.SetTimeFromGlobal();
+				tim1.SetTimeFromGlobal();
+				state = WAIT_START_PAUSE;
+			}
+			break;
+		case WAIT_START_PAUSE:
+			if (button0.isShortPressed) {
+				button0.ClearShortPressed();
+				tim0.Start();
+				button0.SetLed(GREEN, NORMAL);
+				button1.SetLed(GREEN, OFF);
+				disp0.SetBlinkMode(NO_BLINK);
+				disp1.SetBlinkMode(NO_BLINK);
+				state = TIM0_ON;
+			} else if (button1.isShortPressed) {
+				button1.ClearShortPressed();
+				tim1.Start();
+				button0.SetLed(GREEN, OFF);
+				button1.SetLed(GREEN, NORMAL);
+				disp0.SetBlinkMode(NO_BLINK);
+				disp1.SetBlinkMode(NO_BLINK);
+				state = TIM1_ON;
+			} else if (button0.isPressed && button1.isPressed) {
+				tim0.Stop();
+				tim1.Stop();
+				state = END;
+			}
+			break;
+		case TIM0_ON:
+			if (button0.isShortPressed || button1.isShortPressed) {
+				ShortPressDelay();
+				state = TIM0_ON_WAIT_BTN;
+			} else if (button1.isPressed) {
+				tim0.Add10Sec();
+				state = TIM0_ON_WAIT10;
+			} else if (tim0.isUp) {
+				tim0.Stop();
+				tim1.Stop();
+				state = END;
+			}
+			break;
+		case TIM0_ON_WAIT10:
+			if (!button1.isPressed) {
+				state = TIM0_ON;
+			}
+			break;
+		case TIM0_ON_WAIT_BTN:
+			if (button0.isShortPressed && !button1.isShortPressed) {
+				button0.ClearShortPressed();
+				tim0.Stop();
+				tim1.Start();
+				button0.SetLed(GREEN, OFF);
+				button1.SetLed(GREEN, NORMAL);
+				state = TIM1_ON;
+			} else if (!button0.isShortPressed && button1.isShortPressed) {
+				button1.ClearShortPressed();
+				tim0.Add5Sec();
+				state = TIM0_ON;
+			} else if (button0.isShortPressed && button1.isShortPressed) {
+				button0.ClearShortPressed();
+				button1.ClearShortPressed();
+				disp0.SetBlinkMode(BLINK);
+				disp1.SetBlinkMode(BLINK);
+				button0.SetLed(GREEN, BLINKING);
+				button1.SetLed(GREEN, BLINKING);
+				tim0.Stop();
+				tim1.Stop();
+				state = WAIT_START_PAUSE;
+			}
+			break;
+		case TIM1_ON:
+			if (button0.isShortPressed || button1.isShortPressed) {
+				ShortPressDelay();
+				state = TIM1_ON_WAIT_BTN;
+			} else if (button0.isPressed) {
+				tim1.Add10Sec();
+				state = TIM1_ON_WAIT10;
+			} else if (tim1.isUp) {
+				tim0.Stop();
+				tim1.Stop();
+				state = END;
+			}
+			break;
+		case TIM1_ON_WAIT10:
+			if (!button0.isPressed) {
+				state = TIM1_ON;
+			}
+			break;
+		case TIM1_ON_WAIT_BTN:
+			if (!button0.isShortPressed && button1.isShortPressed) {
+				button1.ClearShortPressed();
+				tim0.Start();
+				tim1.Stop();
+				button0.SetLed(GREEN, NORMAL);
+				button1.SetLed(GREEN, OFF);
+				state = TIM0_ON;
+			} else if (button0.isShortPressed && !button1.isShortPressed) {
+				button0.ClearShortPressed();
+				tim1.Add5Sec();
+				state = TIM1_ON;
+			} else if (button0.isShortPressed && button1.isShortPressed) {
+				button0.ClearShortPressed();
+				button1.ClearShortPressed();
+				disp0.SetBlinkMode(BLINK);
+				disp1.SetBlinkMode(BLINK);
+				button0.SetLed(GREEN, BLINKING);
+				button1.SetLed(GREEN, BLINKING);
+				tim0.Stop();
+				tim1.Stop();
+				state = WAIT_START_PAUSE;
+			}
+			break;
+		case END:
+			GameEndAnimation();
+			tim0.Reset();
+			tim1.Reset();
+			Timer::ResetGlobal();
+			button0.SetLed(GREEN, BLINKING);
+			button1.SetLed(BLUE, NORMAL);
+			disp0.SetBlinkMode(BLINK_LOW);
+			state = SETUP_HOUR;
+			break;
+		default:
+			break;
 	}
-
-	if (button1.isShortPressed) {
-		button1.isShortPressed = false;
-		tim0.Stop();
-	}
-
-	if (button0.isPressed && !button1.isPressed) {
-		button0.SetLed(RED, NORMAL);
-		button1.SetLed(GREEN, OFF);
-	} else if (button1.isPressed && !button0.isPressed) {
-		button0.SetLed(RED, OFF);
-		button1.SetLed(GREEN, NORMAL);
-	} else if (button0.isPressed && button1.isPressed) {
-		button0.SetLed(BLUE, BLINKING);
-		button1.SetLed(BLUE, BLINKING);
-	} else {
-		button0.SetLed(BLUE, OFF);
-		button1.SetLed(BLUE, OFF);
-	}
-
-	if (tim0.isUp) tim0.disp->SetBlinkMode(BLINK);
   }
   /* USER CODE END 3 */
 }
@@ -378,7 +546,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, DISP0_DIO_Pin|DISP0_CLK_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, DISP1_DIO_Pin|DISP1_CLK_Pin|DISP0_DIO_Pin|DISP0_CLK_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : BUTTON0_RED_Pin BUTTON0_GREEN_Pin BUTTON0_BLUE_Pin BUTTON1_RED_Pin
                            BUTTON1_GREEN_Pin BUTTON1_BLUE_Pin */
@@ -402,8 +570,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(BOARD_LED_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DISP0_DIO_Pin DISP0_CLK_Pin */
-  GPIO_InitStruct.Pin = DISP0_DIO_Pin|DISP0_CLK_Pin;
+  /*Configure GPIO pins : DISP1_DIO_Pin DISP1_CLK_Pin DISP0_DIO_Pin DISP0_CLK_Pin */
+  GPIO_InitStruct.Pin = DISP1_DIO_Pin|DISP1_CLK_Pin|DISP0_DIO_Pin|DISP0_CLK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -485,15 +653,18 @@ void EXTI9_5_Callback() {
 }
 
 // TIM2 отвечает за синхронное мигание всех элементов
+// Переполнение через 500мс
 void TIM2_PeriodElapsedCallback() {
 	__disable_irq();
 	if (button0.isBlinking) button0.ToggleLed();
 	if (button1.isBlinking) button1.ToggleLed();
 	if (disp0.isBlinking) disp0.Toggle();
+	if (disp1.isBlinking) disp1.Toggle();
 	__enable_irq();
 }
 
 // TIM3 отвечает за короткое/длинное нажатие кнопок
+// Переполнение через 1000мс
 void TIM3_PeriodElapsedCallback() {
 	__disable_irq();
 	/* таймер успел переполниться (значит кнопка не отжата) - ставим флаг isPressed
@@ -516,7 +687,36 @@ void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc) {
 	__disable_irq();
 	HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
 	if (tim0.isOn) tim0.Tick();
+	if (tim1.isOn) tim1.Tick();
 	__enable_irq();
+}
+
+// Отображение времени в формате 00:HH MM:SS на оба дисплея во время настройки
+void DisplayGlobalTime(TM1637 *_disp0, TM1637 *_disp1, RTC_TimeTypeDef _globalTime) {
+	_disp0->Display(0x2, _globalTime.Hours / 10);
+	_disp0->Display(0x3, _globalTime.Hours % 10);
+
+	_disp1->Display(0x0, _globalTime.Minutes / 10);
+	_disp1->Display(0x1, _globalTime.Minutes % 10);
+	_disp1->Display(0x2, _globalTime.Seconds / 10);
+	_disp1->Display(0x3, _globalTime.Seconds % 10);
+}
+
+// Задержка после короткого нажатия одной из кнопок для разделения нажатия
+// одной кнопки и двух кнопок вместе
+void ShortPressDelay() {
+	HAL_Delay(300);
+}
+
+// Анимация, включается в конце игры
+void GameEndAnimation() {
+	button0.SetLed(RED, BLINKING);
+	button1.SetLed(RED, BLINKING);
+	disp0.SetBlinkMode(BLINK);
+	disp1.SetBlinkMode(BLINK);
+	HAL_Delay(3000);
+	disp0.SetBlinkMode(NO_BLINK);
+	disp1.SetBlinkMode(NO_BLINK);
 }
 /* USER CODE END 4 */
 

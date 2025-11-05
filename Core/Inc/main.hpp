@@ -81,13 +81,29 @@ void TIM4_PeriodElapsedCallback(void);
 #define BUTTON1_EXTI_IRQn EXTI9_5_IRQn
 #define BOARD_LED_Pin GPIO_PIN_2
 #define BOARD_LED_GPIO_Port GPIOB
+#define DISP1_DIO_Pin GPIO_PIN_6
+#define DISP1_DIO_GPIO_Port GPIOB
+#define DISP1_CLK_Pin GPIO_PIN_7
+#define DISP1_CLK_GPIO_Port GPIOB
 #define DISP0_DIO_Pin GPIO_PIN_8
 #define DISP0_DIO_GPIO_Port GPIOB
 #define DISP0_CLK_Pin GPIO_PIN_9
 #define DISP0_CLK_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+typedef enum {
+	SETUP_HOUR,
+	SETUP_MIN,
+	SETUP_SEC,
+	WAIT_START_PAUSE,
+	TIM0_ON,
+	TIM0_ON_WAIT10,
+	TIM0_ON_WAIT_BTN,
+	TIM1_ON,
+	TIM1_ON_WAIT10,
+	TIM1_ON_WAIT_BTN,
+	END
+} fsmState;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

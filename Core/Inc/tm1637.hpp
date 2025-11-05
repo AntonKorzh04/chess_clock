@@ -37,6 +37,7 @@ public:
 		SetBrightness(7);
 		SetBlinkMode(NO_BLINK);
 		Clear();
+		Reset();
 	};
 
 	/* Управление дисплеем  --------------------------------------------------*/

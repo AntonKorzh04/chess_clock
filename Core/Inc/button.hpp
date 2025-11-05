@@ -47,6 +47,8 @@ public:
 		автоматически при отпускании кнопки */
 	bool isShortPressed, isPressed, isBlinking;
 
+	void ClearShortPressed() { isShortPressed = false; }
+
 	// Установка цвета и режима работы светодиода
 	void SetLed(ButtonLedColor _color, ButtonLedMode _mode);
 
