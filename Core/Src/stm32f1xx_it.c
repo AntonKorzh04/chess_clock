@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include <main.hpp>
+#include "main.hpp"
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -55,6 +55,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern PCD_HandleTypeDef hpcd_USB_FS;
 extern RTC_HandleTypeDef hrtc;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
@@ -226,6 +227,20 @@ void EXTI3_IRQHandler(void)
   /* USER CODE BEGIN EXTI3_IRQn 1 */
   EXTI3_Callback();
   /* USER CODE END EXTI3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USB low priority or CAN RX0 interrupts.
+  */
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
+
+  /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_FS);
+  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
+
+  /* USER CODE END USB_LP_CAN1_RX0_IRQn 1 */
 }
 
 /**

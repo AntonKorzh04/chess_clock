@@ -13,16 +13,19 @@ RTC_TimeTypeDef Timer::globalTime = {0, 0, 0};
 
 void Timer::AddHour(bool withDelay) {
 	globalTime.Hours++;
+	if (!IS_RTC_HOUR24(globalTime.Hours)) globalTime.Hours = 0;
 	if (withDelay) HAL_Delay(100);
 }
 
 void Timer::AddMinute(bool withDelay) {
 	globalTime.Minutes++;
+	if (!IS_RTC_MINUTES(globalTime.Minutes)) globalTime.Minutes = 0;
 	if (withDelay) HAL_Delay(100);
 }
 
 void Timer::AddSecond(bool withDelay) {
 	globalTime.Seconds++;
+	if (!IS_RTC_SECONDS(globalTime.Seconds)) globalTime.Seconds = 0;
 	if (withDelay) HAL_Delay(100);
 }
 
@@ -31,12 +34,18 @@ void Timer::ResetGlobal() {
 }
 
 void Timer::Add5Sec() {
-	time.Seconds += 5U;
+	if (!IS_RTC_SECONDS(time.Seconds + 5)) {
+		time.Seconds -= 55;
+		time.Minutes++;
+	} else time.Seconds += 5;
 	if (time.Hours != 0) changeToMMSS = 3;
 }
 
 void Timer::Add10Sec() {
-	time.Seconds += 10U;
+	if (!IS_RTC_SECONDS(time.Seconds + 10)) {
+			time.Seconds -= 50;
+			time.Minutes++;
+		} else time.Seconds += 10;
 	if (time.Hours != 0) changeToMMSS = 3;
 }
 
@@ -44,11 +53,11 @@ void Timer::Reset() {
 	isOn = false;
 	isUp = false;
 
-	time.Hours = 0U;
-	time.Minutes = 0U;
-	time.Seconds = 0U;
+	time.Hours = 0;
+	time.Minutes = 0;
+	time.Seconds = 0;
 
-	changeToMMSS = 0U;
+	changeToMMSS = 0;
 }
 
 void Timer::SetTimeFromGlobal() {
@@ -58,14 +67,14 @@ void Timer::SetTimeFromGlobal() {
 
 void Timer::Tick() {
 	if (!IS_RTC_SECONDS(--time.Seconds)) {
-		time.Seconds = 59U;
+		time.Seconds = 59;
 		if (!IS_RTC_MINUTES(--time.Minutes)) {
-			time.Minutes = 59U;
+			time.Minutes = 59;
 			if (!IS_RTC_HOUR24(--time.Hours)) {
 				Stop();
-				time.Hours = 0U;
-				time.Minutes = 0U;
-				time.Seconds = 0U;
+				time.Hours = 0;
+				time.Minutes = 0;
+				time.Seconds = 0;
 				isUp = true;
 			}
 		}

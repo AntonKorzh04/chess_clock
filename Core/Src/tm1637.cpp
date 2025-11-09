@@ -83,6 +83,7 @@ void TM1637::SetBlinkMode(DispBlinkMode _mode) {
 	if (mode == _mode) return;
 	mode = _mode;
 	if (mode != NO_BLINK) {
+		Display4Digits(CurrentDispData, false);
 		isBlinking = true;
 		isOn = true;
 	}
@@ -117,8 +118,10 @@ void TM1637::Toggle() {
 		case BLINK:
 			if (isOn) {
 				Clear();
+				point_flag = 1;
 			} else {
 				Display4Digits(CurrentDispData, false);
+				point_flag = 0;
 			}
 			isOn = !isOn;
 			break;
