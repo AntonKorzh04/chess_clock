@@ -65,7 +65,7 @@ void Timer::SetTimeFromGlobal() {
 	DispTime();
 }
 
-void Timer::Tick() {
+RTC_TimeTypeDef Timer::Tick() {
 	if (!IS_RTC_SECONDS(--time.Seconds)) {
 		time.Seconds = 59;
 		if (!IS_RTC_MINUTES(--time.Minutes)) {
@@ -80,6 +80,8 @@ void Timer::Tick() {
 		}
 	}
 	DispTime();
+
+	return time;
 }
 
 /* Private -------------------------------------------------------------------*/

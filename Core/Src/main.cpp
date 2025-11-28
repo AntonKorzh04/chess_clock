@@ -63,6 +63,10 @@ Timer tim0 = Timer(&disp0);
 Timer tim1 = Timer(&disp1);
 
 fsmState state;
+
+// Player 1 00:00:00\n => 18 байт
+char usbBuf[32];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,6 +78,7 @@ static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc);
 void DisplayGlobalTime(TM1637 *, TM1637 *, RTC_TimeTypeDef);
+void CDCTransmitTime(RTC_TimeTypeDef time, uint8_t);
 void GameEndAnimation();
 /* USER CODE END PFP */
 
@@ -142,9 +147,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	unsigned char msg[] = "Hello world!\n";
-//	uint8_t returnValue = CDC_Transmit_FS(msg, sizeof(msg));
-//	HAL_Delay(2000);
 	switch (state) {
 
 		case SETUP_HOUR:
@@ -251,12 +253,7 @@ int main(void)
 			} else if (button1.isShortPressed) {
 				button1.ClearShortPressed();
 				tim0.Add5Sec();
-			}
-//			else if (!button0.isPressed && button1.isPressed) {
-//				tim0.Add10Sec();
-//				state = TIM0_ON_WAIT10;
-//			}
-			else if (button0.isPressed && button1.isPressed) {
+			} else if (button0.isPressed && button1.isPressed) {
 				disp0.SetBlinkMode(BLINK);
 				disp1.SetBlinkMode(BLINK);
 				button0.SetLed(GREEN, BLINKING);
@@ -271,10 +268,6 @@ int main(void)
 			}
 			break;
 
-//		case TIM0_ON_WAIT10:
-//			if (!button1.isPressed) state = TIM0_ON;
-//			break;
-
 		// --------------------------------------------------------------------
 
 		case TIM1_ON:
@@ -288,12 +281,7 @@ int main(void)
 			} else if (button0.isShortPressed) {
 				button0.ClearShortPressed();
 				tim1.Add5Sec();
-			}
-//			else if (button0.isPressed && !button1.isPressed) {
-//				tim1.Add10Sec();
-//				state = TIM1_ON_WAIT10;
-//			}
-			else if (button0.isPressed && button1.isPressed) {
+			} else if (button0.isPressed && button1.isPressed) {
 				disp0.SetBlinkMode(BLINK);
 				disp1.SetBlinkMode(BLINK);
 				button0.SetLed(GREEN, BLINKING);
@@ -307,10 +295,6 @@ int main(void)
 				state = END;
 			}
 			break;
-
-//		case TIM1_ON_WAIT10:
-//			if (!button0.isPressed) state = TIM1_ON;
-//			break;
 
 		// --------------------------------------------------------------------
 
@@ -707,8 +691,12 @@ void TIM3_PeriodElapsedCallback() {
 void HAL_RTCEx_RTCEventCallback(RTC_HandleTypeDef *hrtc) {
 	__disable_irq();
 	HAL_GPIO_TogglePin(BOARD_LED_GPIO_Port, BOARD_LED_Pin);
-	if (tim0.isOn) tim0.Tick();
-	if (tim1.isOn) tim1.Tick();
+	if (tim0.isOn) {
+		CDCTransmitTime(tim0.Tick(), 0);
+	}
+	if (tim1.isOn) {
+		CDCTransmitTime(tim1.Tick(), 1);
+	}
 	__enable_irq();
 }
 
@@ -721,6 +709,16 @@ void DisplayGlobalTime(TM1637 *_disp0, TM1637 *_disp1, RTC_TimeTypeDef _globalTi
 	_disp1->Display(0x1, _globalTime.Minutes % 10);
 	_disp1->Display(0x2, _globalTime.Seconds / 10);
 	_disp1->Display(0x3, _globalTime.Seconds % 10);
+}
+
+void CDCTransmitTime(RTC_TimeTypeDef time, uint8_t playerNum) {
+	snprintf(usbBuf, sizeof(usbBuf),
+			"Player %d %02d:%02d:%02d\n",
+			playerNum,
+			time.Hours,
+			time.Minutes,
+			time.Seconds);
+	CDC_Transmit_FS((uint8_t*)&usbBuf, sizeof(usbBuf));
 }
 
 // Анимация, включается в конце игры
